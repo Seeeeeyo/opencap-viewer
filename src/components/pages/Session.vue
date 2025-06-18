@@ -768,12 +768,17 @@ export default {
 
     this.startTrialsPoll()
 
-    const doneTrials = this.filteredTrials.filter(trial => trial.status === 'done')
+    // Check if session is in monocular mode - if so, don't auto-load any trial
+    const isMonocularMode = this.session.meta && this.session.meta.isMono === true
 
-    if (doneTrials.length > 0) {
-      console.log("Done trials:")
-      console.log(doneTrials[0])
-      this.loadTrial(doneTrials[0])
+    if (!isMonocularMode) {
+      const doneTrials = this.filteredTrials.filter(trial => trial.status === 'done')
+
+      if (doneTrials.length > 0) {
+        console.log("Done trials:")
+        console.log(doneTrials[0])
+        this.loadTrial(doneTrials[0])
+      }
     }
   },
   beforeDestroy() {

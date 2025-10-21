@@ -3,7 +3,8 @@ module.exports = {
     'chartjs-plugin-zoom'
   ],
   devServer: {
-    host: 'localhost'
+    host: '0.0.0.0',
+    public: 'localhost:8080'
   },
   chainWebpack: config => {
     config.module

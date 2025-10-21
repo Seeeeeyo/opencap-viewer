@@ -348,6 +348,13 @@
           <div v-else-if="trialLoading" class="flex-grow-1 d-flex align-center justify-center">
               <v-progress-circular indeterminate color="grey" size="30" width="4" />
           </div>
+
+          <div v-else class="flex-grow-1 d-flex align-center justify-center">
+              <div class="text-center pa-4">
+                  <v-icon size="64" color="grey">mdi-video-outline</v-icon>
+                  <p class="mt-4 grey--text">No trial selected. Record a new trial or select an existing one from the list.</p>
+              </div>
+          </div>
       </div>
 
       <div class="right d-flex flex-column">
@@ -373,24 +380,24 @@
                 <v-icon x-large color="orange">mdi-rename-box</v-icon>
               </v-col>
               <v-col cols="10">
-                <p v-if="session.trials[trial_rename_index]?.status === 'processing' || session.trials[trial_rename_index]?.status === 'uploading'" class="text-orange">
+                <p v-if="session.trials[trial_rename_index] && (session.trials[trial_rename_index].status === 'processing' || session.trials[trial_rename_index].status === 'uploading')" class="text-orange">
                     You can't rename a trial while it's being uploaded or processed. Please wait before attempting to rename the trial.
                 </p>
                 <p v-else>
-                  Insert a new name for trial {{session.trials[trial_rename_index]?.name}}:
+                  Insert a new name for trial {{session.trials[trial_rename_index] && session.trials[trial_rename_index].name}}:
                 </p>
                 <ValidationObserver tag="div" class="d-flex flex-column" ref="observer_tr" v-slot="{ invalid }">
-                  <ValidationProvider :rules="{required:true, alpha_dash_custom:true, unique_trial_name:[session.trials, session.trials[trial_rename_index]?.name]}" v-slot="{ errors }" name="Trial name">
+                  <ValidationProvider :rules="{required:true, alpha_dash_custom:true, unique_trial_name:[session.trials, session.trials[trial_rename_index] && session.trials[trial_rename_index].name]}" v-slot="{ errors }" name="Trial name">
 
                       <v-text-field v-model="trialNewName" label="Trial new name" class="flex-grow-0"
-                          :disabled="state !== 'ready' || session.trials[trial_rename_index]?.status === 'processing' || session.trials[trial_rename_index]?.status === 'uploading'"
+                          :disabled="state !== 'ready' || (session.trials[trial_rename_index] && (session.trials[trial_rename_index].status === 'processing' || session.trials[trial_rename_index].status === 'uploading'))"
                                     dark
                                     :error="errors.length > 0" :error-messages="errors[0]" />
                   </ValidationProvider>
 
                   <v-spacer></v-spacer>
 
-                  <v-btn class="text-right" :disabled="invalid || session.trials[trial_rename_index]?.status === 'processing' || session.trials[trial_rename_index]?.status === 'uploading'"
+                  <v-btn class="text-right" :disabled="invalid || (session.trials[trial_rename_index] && (session.trials[trial_rename_index].status === 'processing' || session.trials[trial_rename_index].status === 'uploading'))"
                          @click="trial_rename_dialog = false; renameTrial(session.trials[trial_rename_index], trial_rename_index, trialNewName);">
                       Rename Trial
                   </v-btn>
@@ -411,11 +418,11 @@
               <v-icon x-large color="orange">mdi-rename-box</v-icon>
             </v-col>
             <v-col cols="10">
-              <p v-if="session.trials[trial_modify_tags_index]?.status === 'processing' || session.trials[trial_modify_tags_index]?.status === 'uploading'" class="text-orange">
+              <p v-if="session.trials[trial_modify_tags_index] && (session.trials[trial_modify_tags_index].status === 'processing' || session.trials[trial_modify_tags_index].status === 'uploading')" class="text-orange">
                   You can't modify trial tags while it's being uploaded or processed. Please wait before attempting to modify the tags.
               </p>
               <p v-else>
-                Insert the tags for trial {{session.trials[trial_modify_tags_index]?.name}}:
+                Insert the tags for trial {{session.trials[trial_modify_tags_index] && session.trials[trial_modify_tags_index].name}}:
               </p>
               <ValidationObserver tag="div" class="d-flex flex-column" ref="observer_tr_tag">
                 <ValidationProvider v-slot="{ errors }" name="Trial tags">
@@ -482,7 +489,7 @@
                   <v-btn
                       small
                       v-if="!func.trials.includes(session.trials[trial_analysis_index].id) && !(session.trials[trial_analysis_index].id in func.states)"
-                      @click="invokeAnalysisFunction(func.id, session.trials[trial_analysis_index].id, session.trials[trial_analysis_index]?.name)"
+                      @click="invokeAnalysisFunction(func.id, session.trials[trial_analysis_index].id, session.trials[trial_analysis_index] && session.trials[trial_analysis_index].name)"
                       >
                       Run
                   </v-btn>
@@ -497,7 +504,7 @@
 
                             <v-list>
                                 <v-list-item link
-                                    @click="invokeAnalysisFunction(func.id, session.trials[trial_analysis_index].id, session.trials[trial_analysis_index]?.name)"
+                                    @click="invokeAnalysisFunction(func.id, session.trials[trial_analysis_index].id, session.trials[trial_analysis_index] && session.trials[trial_analysis_index].name)"
                                     :disabled="trial_analysis_index in func.trials">
                                     Re-run
                                 </v-list-item>
@@ -794,11 +801,15 @@ export default {
     trial() {
       if (this.trial) {
         this.$nextTick(() => {
-          this.resizeObserver = new ResizeObserver(this.onResize)
-          this.resizeObserver.observe(this.$refs.mocap)
+          if (this.$refs.mocap) {
+            this.resizeObserver = new ResizeObserver(this.onResize)
+            this.resizeObserver.observe(this.$refs.mocap)
+          }
         })
       } else {
-        this.resizeObserver.unobserve(this.$refs.mocap)
+        if (this.resizeObserver && this.$refs.mocap) {
+          this.resizeObserver.unobserve(this.$refs.mocap)
+        }
       }
     },
     playSpeed() {
@@ -1299,106 +1310,108 @@ export default {
           if (this.frames.length > 0) {
             this.$nextTick(() => {
               try {
-                while (this.$refs.mocap.lastChild) {
-                  this.$refs.mocap.removeChild(this.$refs.mocap.lastChild)
-                }
+                if (this.$refs.mocap) {
+                  while (this.$refs.mocap.lastChild) {
+                    this.$refs.mocap.removeChild(this.$refs.mocap.lastChild)
+                  }
 
-                // setup3d
-                const container = this.$refs.mocap
+                  // setup3d
+                  const container = this.$refs.mocap
 
-                let ratio = container.clientWidth / container.clientHeight
-                this.camera = new THREE.PerspectiveCamera(45, ratio, 0.1, 125)
-                this.camera.position.x = 4.5
-                this.camera.position.z = -3
-                this.camera.position.y = 3
+                  let ratio = container.clientWidth / container.clientHeight
+                  this.camera = new THREE.PerspectiveCamera(45, ratio, 0.1, 125)
+                  this.camera.position.x = 4.5
+                  this.camera.position.z = -3
+                  this.camera.position.y = 3
 
-                this.scene = new THREE.Scene()
-                this.renderer = new THREE.WebGLRenderer({antialias: true})
-                this.renderer.shadowMap.enabled = true;
-                this.onResize()
-                container.appendChild(this.renderer.domElement)
-                this.controls = new THREE_OC.OrbitControls(this.camera, this.renderer.domElement)
+                  this.scene = new THREE.Scene()
+                  this.renderer = new THREE.WebGLRenderer({antialias: true})
+                  this.renderer.shadowMap.enabled = true;
+                  this.onResize()
+                  container.appendChild(this.renderer.domElement)
+                  this.controls = new THREE_OC.OrbitControls(this.camera, this.renderer.domElement)
 
-                // show3d
-                // add the plane
-                {
-                  const planeSize = 10;
+                  // show3d
+                  // add the plane
+                  {
+                    const planeSize = 10;
 
-                  const loader = new THREE.TextureLoader();
-                  const texture = loader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png');
-                  //                  const texture = loader.load('https://www.the3rdsequence.com/texturedb/download/32/texture/jpg/1024/smooth+white+tile-1024x1024.jpg')
-                  texture.wrapS = THREE.RepeatWrapping;
-                  texture.wrapT = THREE.RepeatWrapping;
-                  texture.magFilter = THREE.NearestFilter;
-                  const repeats = planeSize * 2;
-                  texture.repeat.set(repeats, repeats);
+                    const loader = new THREE.TextureLoader();
+                    const texture = loader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png');
+                    //                  const texture = loader.load('https://www.the3rdsequence.com/texturedb/download/32/texture/jpg/1024/smooth+white+tile-1024x1024.jpg')
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    texture.magFilter = THREE.NearestFilter;
+                    const repeats = planeSize * 2;
+                    texture.repeat.set(repeats, repeats);
 
-                  const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
-                  const planeMat = new THREE.MeshPhongMaterial({
-                    map: texture,
-                    side: THREE.DoubleSide,
-                  });
-                  const mesh = new THREE.Mesh(planeGeo, planeMat);
-                  mesh.rotation.x = Math.PI * -.5;
-                  mesh.position.y = .0
-                  mesh.receiveShadow = true;
-                  this.scene.add(mesh);
-                }
+                    const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
+                    const planeMat = new THREE.MeshPhongMaterial({
+                      map: texture,
+                      side: THREE.DoubleSide,
+                    });
+                    const mesh = new THREE.Mesh(planeGeo, planeMat);
+                    mesh.rotation.x = Math.PI * -.5;
+                    mesh.position.y = .0
+                    mesh.receiveShadow = true;
+                    this.scene.add(mesh);
+                  }
 
-                // add sun
-                {
-                  const skyColor = 0xB1E1FF;  // light blue
-                  const groundColor = 0xB97A20;  // brownish orange
-                  const intensity = 0.5
-                  const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
-                  this.scene.add(light);
-                }
+                  // add sun
+                  {
+                    const skyColor = 0xB1E1FF;  // light blue
+                    const groundColor = 0xB97A20;  // brownish orange
+                    const intensity = 0.5
+                    const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
+                    this.scene.add(light);
+                  }
 
-                // add directional light
-                {
-                  const color = 0xFFFFFF;
-                  const intensity = 0.8;
-                  const light = new THREE.DirectionalLight(color, intensity);
-                  light.position.set(2, 3, 1.5);
-                  light.target.position.set(0, 0, 0);
-                  light.castShadow = true;
-                  light.shadow.camera.left = -10
-                  light.shadow.camera.right = 10
-                  light.shadow.camera.top = -10
-                  light.shadow.camera.bottom = 10
-                  light.shadow.camera.near = 0
-                  light.shadow.camera.far = 50
-                  light.shadow.camera.zoom = 8
-                  this.scene.add(light);
-                  this.scene.add(light.target);
+                  // add directional light
+                  {
+                    const color = 0xFFFFFF;
+                    const intensity = 0.8;
+                    const light = new THREE.DirectionalLight(color, intensity);
+                    light.position.set(2, 3, 1.5);
+                    light.target.position.set(0, 0, 0);
+                    light.castShadow = true;
+                    light.shadow.camera.left = -10
+                    light.shadow.camera.right = 10
+                    light.shadow.camera.top = -10
+                    light.shadow.camera.bottom = 10
+                    light.shadow.camera.near = 0
+                    light.shadow.camera.far = 50
+                    light.shadow.camera.zoom = 8
+                    this.scene.add(light);
+                    this.scene.add(light.target);
 
-                  // const helper = new THREE.DirectionalLightHelper(light);
-                  // this.scene.add(helper);
+                    // const helper = new THREE.DirectionalLightHelper(light);
+                    // this.scene.add(helper);
 
-                  // const cameraHelper = new THREE.CameraHelper(light.shadow.camera);
-                  // this.scene.add(cameraHelper);
-                }
+                    // const cameraHelper = new THREE.CameraHelper(light.shadow.camera);
+                    // this.scene.add(cameraHelper);
+                  }
 
-                // add bones
-                for (let body in this.animation_json.bodies) {
-                  let bd = this.animation_json.bodies[body]
-                  bd.attachedGeometries.forEach((geom) => {
-                    let path = 'https://mc-opencap-public.s3.us-west-2.amazonaws.com/geometries/' + geom.substr(0, geom.length - 4) + ".obj";
-                    objLoader.load(path, (root) => {
-                      root.castShadow = true;
-                      root.receiveShadow = true;
-                      root.traverse(function (child) {
-                        if (child instanceof THREE.Mesh) {
-                          //                               child.receiveShadow = true;
-                          child.castShadow = true;
-                        }
-                      });
-                      this.meshes[body + geom] = root;
-                      this.meshes[body + geom].scale.set(bd.scaleFactors[0], bd.scaleFactors[1], bd.scaleFactors[2])
-                      this.scene.add(root);
+                  // add bones
+                  for (let body in this.animation_json.bodies) {
+                    let bd = this.animation_json.bodies[body]
+                    bd.attachedGeometries.forEach((geom) => {
+                      let path = 'https://mc-opencap-public.s3.us-west-2.amazonaws.com/geometries/' + geom.substr(0, geom.length - 4) + ".obj";
+                      objLoader.load(path, (root) => {
+                        root.castShadow = true;
+                        root.receiveShadow = true;
+                        root.traverse(function (child) {
+                          if (child instanceof THREE.Mesh) {
+                            //                               child.receiveShadow = true;
+                            child.castShadow = true;
+                          }
+                        });
+                        this.meshes[body + geom] = root;
+                        this.meshes[body + geom].scale.set(bd.scaleFactors[0], bd.scaleFactors[1], bd.scaleFactors[2])
+                        this.scene.add(root);
+                      })
                     })
-                  })
-                }
+                  }
+                } // close the if (this.$refs.mocap) block
               } finally {
                 this.trialLoading = false
               }

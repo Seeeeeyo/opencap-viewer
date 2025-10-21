@@ -2,6 +2,9 @@ module.exports = {
   transpileDependencies: [
     'chartjs-plugin-zoom'
   ],
+  devServer: {
+    host: 'localhost'
+  },
   chainWebpack: config => {
     config.module
       .rule('vue')

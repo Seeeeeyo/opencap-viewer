@@ -10,11 +10,9 @@
           <img height="59px" class="logo" src="/images/opencap-logo-dark.png"/>
         </router-link>
 
-      <router-link
-      v-else
-      :to="{ name: '#' }">
+      <div v-else>
         <img height="59px" class="logo" src="/images/opencap-logo-dark.png"/>
-      </router-link>
+      </div>
       <v-spacer></v-spacer>
 
       <QRCodeDialog/>
